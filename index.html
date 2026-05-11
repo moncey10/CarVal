@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CarVal — Full Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#09090e;--surface:#111118;--card:#181822;--card2:#1e1e2c;
+  --border:#252534;--border2:#303044;
+  --accent:#b8ff3c;--accent-glow:rgba(184,255,60,0.15);--accent-dim:#7ab020;
+  --text:#e8e8f2;--muted:#6060a0;--muted2:#9090b8;
+  --green:#3cffa0;--blue:#3cb8ff;--orange:#ff9a3c;--red:#ff4d6d;
+  --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;flex-direction:column}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+.logo{padding:0 28px;font-size:1.1rem;font-weight:800;letter-spacing:3px;color:var(--accent);border-right:1px solid var(--border);height:56px;display:flex;align-items:center}
+.logo span{color:var(--text)}
+.tabs{display:flex;height:56px}
+.tab{display:flex;align-items:center;gap:8px;padding:0 22px;font-size:0.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-right:1px solid var(--border);border-bottom:2px solid transparent;transition:all 0.2s;white-space:nowrap}
+.tab svg{width:14px;height:14px;opacity:0.6}
+.tab:hover{color:var(--text);background:var(--card)}
+.tab.active{color:var(--accent);border-bottom:2px solid var(--accent);background:var(--bg)}
+.topbar-right{margin-left:auto;padding:0 20px;display:flex;align-items:center;gap:12px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.status-text{font-family:var(--mono);font-size:0.68rem;color:var(--muted2)}
+
+/* ── LAYOUT ── */
+.main{flex:1;overflow:hidden;display:flex}
+.page{display:none;width:100%;height:100%;overflow-y:auto}
+.page.active{display:flex;flex-direction:column}
+
+/* ── PREDICT PAGE ── */
+.predict-wrap{flex:1;display:grid;grid-template-columns:1fr 380px;gap:0;height:100%}
+.predict-form-col{padding:40px 36px;overflow-y:auto;border-right:1px solid var(--border)}
+.predict-result-col{padding:32px 28px;overflow-y:auto;background:var(--surface)}
+
+.pg-eyebrow{font-family:var(--mono);font-size:0.65rem;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:10px}
+.pg-title{font-size:2.4rem;font-weight:800;line-height:1;margin-bottom:6px}
+.pg-sub{font-family:var(--mono);font-size:0.75rem;color:var(--muted2);line-height:1.8;margin-bottom:32px}
+
+.section-label{font-size:0.6rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1/-1}
+label{font-size:0.62rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+input,select{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:var(--font);font-size:0.88rem;font-weight:600;
+  padding:11px 13px;outline:none;width:100%;appearance:none;
+  transition:border-color .2s,box-shadow .2s
+}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+input::placeholder{color:var(--muted);font-weight:400}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236060a0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px;cursor:pointer}
+select option{background:var(--card)}
+
+.btn-predict{width:100%;margin-top:20px;background:var(--accent);color:#09090e;border:none;border-radius:10px;font-family:var(--font);font-size:0.85rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;padding:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .15s,box-shadow .15s}
+.btn-predict:hover{transform:translateY(-2px);box-shadow:0 8px 28px var(--accent-glow)}
+.btn-predict:disabled{opacity:.5;cursor:wait;transform:none;box-shadow:none}
+.spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.2);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* result col */
+.result-idle{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:10px;border:1px dashed var(--border2);border-radius:14px;margin-bottom:20px}
+.idle-car{font-size:2.8rem;opacity:.25}
+.idle-hint{font-family:var(--mono);font-size:0.72rem;color:var(--muted);text-align:center;line-height:1.8}
+.result-price-card{background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:24px;margin-bottom:16px;display:none}
+.res-ey{font-family:var(--mono);font-size:0.6rem;color:var(--accent);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:6px}
+.res-price{font-size:2.8rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.res-msg{font-family:var(--mono);font-size:0.72rem;color:var(--muted2);margin-top:8px;line-height:1.7}
+.summary-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;display:none;margin-bottom:16px}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.8rem}
+.summary-row:last-child{border-bottom:none}
+.summary-key{font-family:var(--mono);color:var(--muted);font-size:0.7rem}
+.summary-val{font-weight:700;font-family:var(--mono);font-size:0.78rem}
+.err-card{background:rgba(255,77,109,.06);border:1px solid rgba(255,77,109,.25);border-radius:12px;padding:18px;font-family:var(--mono);font-size:0.75rem;color:var(--red);line-height:1.8;display:none;margin-bottom:16px}
+.chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.chip{background:var(--card);border:1px solid var(--border);border-radius:100px;padding:5px 13px;font-size:0.65rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);display:flex;align-items:center;gap:5px}
+
+/* ── ADMIN PAGE ── */
+.admin-wrap{flex:1;display:grid;grid-template-columns:220px 1fr;height:100%}
+.admin-sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 0;overflow-y:auto}
+.sidebar-label{font-size:0.58rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);padding:0 20px;margin:20px 0 8px}
+.sidebar-label:first-child{margin-top:0}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:0.8rem;font-weight:600;color:var(--muted2);cursor:pointer;border-left:2px solid transparent;transition:all .15s}
+.sidebar-item svg{width:15px;height:15px;flex-shrink:0}
+.sidebar-item:hover{color:var(--text);background:var(--card)}
+.sidebar-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(184,255,60,.04)}
+.admin-content{overflow-y:auto;padding:32px 36px}
+.admin-section{display:none}
+.admin-section.active{display:block}
+
+/* admin header */
+.admin-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px}
+.admin-title{font-size:1.6rem;font-weight:800}
+.admin-sub{font-family:var(--mono);font-size:0.72rem;color:var(--muted2);margin-top:4px;line-height:1.7}
+.btn-sm{background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--font);font-size:0.72rem;font-weight:700;letter-spacing:1px;padding:9px 18px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm.danger:hover{border-color:var(--red);color:var(--red)}
+.btn-sm.accent{background:var(--accent);color:#09090e;border-color:var(--accent)}
+.btn-sm.accent:hover{box-shadow:0 4px 16px var(--accent-glow)}
+
+/* kpi row */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.kpi-label{font-family:var(--mono);font-size:0.62rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+.kpi-val{font-size:1.7rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.kpi-delta{font-family:var(--mono);font-size:0.68rem;margin-top:4px}
+.kpi-delta.up{color:var(--green)}
+.kpi-delta.down{color:var(--red)}
+.kpi-delta.neutral{color:var(--muted2)}
+
+/* charts */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.chart-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px}
+.chart-box.wide{grid-column:1/-1}
+.chart-title{font-size:0.65rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+canvas{width:100%!important}
+
+/* table */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:24px}
+.table-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.table-title{font-size:0.65rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.tbl{width:100%;border-collapse:collapse;font-size:0.78rem}
+.tbl th{text-align:left;padding:10px 16px;font-size:0.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-family:var(--mono)}
+.tbl td{padding:11px 16px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.75rem;color:var(--muted2)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--card2);color:var(--text)}
+.badge{display:inline-block;border-radius:6px;padding:2px 9px;font-size:0.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.badge.new{background:rgba(60,255,160,.1);color:var(--green)}
+.badge.used{background:rgba(255,154,60,.1);color:var(--orange)}
+.badge.like{background:rgba(60,184,255,.1);color:var(--blue)}
+.badge.electric{background:rgba(60,184,255,.1);color:var(--blue)}
+.badge.petrol{background:rgba(255,154,60,.1);color:var(--orange)}
+.badge.diesel{background:rgba(255,77,109,.1);color:var(--red)}
+.badge.hybrid{background:rgba(184,255,60,.1);color:var(--accent)}
+
+/* brand bars */
+.brand-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.brand-row:last-child{border-bottom:none}
+.brand-name{font-family:var(--mono);font-size:0.72rem;color:var(--muted2);min-width:80px}
+.bar-track{flex:1;background:var(--card2);border-radius:100px;height:6px;overflow:hidden}
+.bar-fill{height:6px;border-radius:100px;background:var(--accent);transition:width .8s ease}
+.bar-pct{font-family:var(--mono);font-size:0.65rem;color:var(--muted);min-width:36px;text-align:right}
+.brand-count{font-family:var(--mono);font-size:0.65rem;color:var(--accent-dim);min-width:28px;text-align:right}
+
+/* model config */
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.config-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px}
+.config-card h3{font-size:0.62rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.param-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:0.82rem}
+.param-row:last-child{border-bottom:none}
+.param-key{color:var(--muted2);font-family:var(--mono);font-size:0.72rem}
+.param-val{font-weight:700;font-family:var(--mono);font-size:0.78rem;color:var(--text)}
+.metric-big{font-size:1.4rem;font-weight:800;color:var(--accent)}
+
+/* api logs */
+.log-line{padding:9px 14px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.7rem;display:flex;align-items:center;gap:12px}
+.log-line:last-child{border-bottom:none}
+.log-time{color:var(--muted);min-width:80px}
+.log-method{padding:2px 7px;border-radius:4px;font-size:0.6rem;font-weight:700}
+.log-method.post{background:rgba(60,255,160,.1);color:var(--green)}
+.log-method.get{background:rgba(60,184,255,.1);color:var(--blue)}
+.log-path{color:var(--muted2);flex:1}
+.log-status{font-weight:700}
+.log-status.ok{color:var(--green)}
+.log-status.err{color:var(--red)}
+.log-ms{color:var(--muted);text-align:right;min-width:52px}
+
+/* empty */
+.empty-state{text-align:center;padding:60px 24px;font-family:var(--mono);font-size:0.75rem;color:var(--muted);line-height:2}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">CAR<span>VAL</span></div>
+  <div class="tabs">
+    <div class="tab active" onclick="showPage('predict',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      Predict
+    </div>
+    <div class="tab" onclick="showPage('admin',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Admin Dashboard
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="status-dot"></div>
+    <div class="status-text">API: localhost:8000</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- PREDICT PAGE -->
+  <div class="page active" id="page-predict">
+    <div class="predict-wrap">
+
+      <div class="predict-form-col">
+        <div class="pg-eyebrow">ML-Powered Valuation</div>
+        <div class="pg-title">PREDICT<br/>CAR PRICE</div>
+        <div class="pg-sub">Random Forest model • 7 features • instant estimate</div>
+
+        <div class="section-label">Vehicle Details</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Brand</label>
+            <select id="Brand">
+              <option value="" disabled selected>Select brand</option>
+              <option>Audi</option><option>BMW</option><option>Ford</option>
+              <option>Honda</option><option>Mercedes</option><option>Tesla</option><option>Toyota</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Year</label>
+            <input type="number" id="Year" placeholder="e.g. 2021" min="1990" max="2025"/>
+          </div>
+          <div class="field">
+            <label>Engine Size (L)</label>
+            <input type="number" id="Engine_Size" placeholder="e.g. 2.0" step="0.1" min="0.5" max="8.0"/>
+          </div>
+          <div class="field">
+            <label>Fuel Type</label>
+            <select id="Fuel_Type">
+              <option value="" disabled selected>Select fuel</option>
+              <option>Petrol</option><option>Diesel</option><option>Electric</option><option>Hybrid</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Transmission</label>
+            <select id="Transmission">
+              <option value="" disabled selected>Select type</option>
+              <option>Automatic</option><option>Manual</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Condition</label>
+            <select id="Condition">
+              <option value="" disabled selected>Select condition</option>
+              <option>New</option><option>Like New</option><option>Used</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label>Mileage (km)</label>
+            <input type="number" id="Mileage" placeholder="e.g. 35000" min="0"/>
+          </div>
+        </div>
+
+        <button class="btn-predict" id="predictBtn" onclick="doPrediction()">
+          <span id="btnLabel">PREDICT PRICE</span>
+          <div class="spinner" id="btnSpinner"></div>
+        </button>
+      </div>
+
+      <div class="predict-result-col">
+        <div class="section-label">Result</div>
+
+        <div class="result-idle" id="idleState">
+          <div class="idle-car">🚗</div>
+          <div class="idle-hint">Fill in all fields<br/>and hit Predict Price</div>
+        </div>
+
+        <div class="result-price-card" id="priceCard">
+          <div class="res-ey">Estimated Resale Value</div>
+          <div class="res-price" id="resPrice">$0</div>
+          <div class="res-msg" id="resMsg"></div>
+        </div>
+
+        <div class="err-card" id="errCard"></div>
+
+        <div class="summary-card" id="summaryCard">
+          <div class="section-label" style="margin-bottom:12px">Input Summary</div>
+          <div id="summaryRows"></div>
+        </div>
+
+        <div class="chip-row">
+          <div class="chip"><span style="width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 2s ease infinite;display:inline-block"></span>API Live</div>
+          <div class="chip">🌲 Random Forest</div>
+          <div class="chip">⚡ FastAPI</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN PAGE -->
+  <div class="page" id="page-admin">
+    <div class="admin-wrap">
+
+      <!-- Sidebar -->
+      <div class="admin-sidebar">
+        <div class="sidebar-label">Overview</div>
+        <div class="sidebar-item active" onclick="showSection('overview',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </div>
+        <div class="sidebar-item" onclick="showSection('analytics',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Analytics
+        </div>
+        <div class="sidebar-label">Data</div>
+        <div class="sidebar-item" onclick="showSection('predictions',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Predictions Log
+        </div>
+        <div class="sidebar-item" onclick="showSection('brands',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Brand Stats
+        </div>
+        <div class="sidebar-label">System</div>
+        <div class="sidebar-item" onclick="showSection('model',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          Model Config
+        </div>
+        <div class="sidebar-item" onclick="showSection('apilogs',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          API Logs
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="admin-content">
+
+        <!-- OVERVIEW -->
+        <div class="admin-section active" id="sec-overview">
+          <div class="admin-hdr">
+            <div>
+              <div class="admin-title">Dashboard</div>
+              <div class="admin-sub">CarVal ML system overview • Live session data</div>
+            </div>
+            <button class="btn-sm accent" onclick="refreshAdmin()">↻ Refresh</button>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi">
+              <div class="kpi-label">Total Predictions</div>
+              <div class="kpi-val" id="kpi-total">0</div>
+              <div class="kpi-delta neutral" id="kpi-total-d">This session</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Avg Predicted Price</div>
+              <div class="kpi-val" id="kpi-avg">—</div>
+              <div class="kpi-delta neutral">USD</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">API Status</div>
+              <div class="kpi-val" style="color:var(--green)" id="kpi-status">●&nbsp;Live</div>
+              <div class="kpi-delta neutral">localhost:8000</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Top Brand</div>
+              <div class="kpi-val" style="font-size:1.2rem" id="kpi-top-brand">—</div>
+              <div class="kpi-delta neutral">Most predicted</div>
+            </div>
+          </div>
+
+          <div class="chart-row">
+            <div class="chart-box">
+              <div class="chart-title">Predictions Over Time</div>
+              <canvas id="lineChart" height="160"></canvas>
+            </div>
+            <div class="chart-box">
+              <div class="chart-title">Price Distribution</div>
+              <canvas id="distChart" height="160"></canvas>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <div class="table-head">
+              <div class="table-title">Recent Predictions</div>
+              <button class="btn-sm danger" onclick="clearHistory()">Clear</button>
+            </div>
+            <div id="recentTable"><div class="empty-state">No predictions yet. Run one in the Predict tab.</div></div>
+          </div>
+        </div>
+
+        <!-- ANALYTICS -->
+        <div class="admin-section" id="sec-analytics">
+          <div class="admin-hdr">
+            <div>
+              <div class="admin-title">Analytics</div>
+              <div class="admin-sub">Feature breakdowns and price insights</div>
+            </div>
+          </div>
+          <div class="chart-row">
+            <div class="chart-box">
+              <div class="chart-title">Avg Price by Brand</div>
+              <canvas id="brandChart" height="200"></canvas>
+            </div>
+            <div class="chart-box">
+              <div class="chart-title">Fuel Type Split</div>
+              <canvas id="fuelChart" height="200"></canvas>
+            </div>
+          </div>
+          <div class="chart-row">
+            <div class="chart-box">
+              <div class="chart-title">Condition Distribution</div>
+              <canvas id="condChart" height="160"></canvas>
+            </div>
+            <div class="chart-box">
+              <div class="chart-title">Transmission Split</div>
+              <canvas id="transChart" height="160"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- PREDICTIONS LOG -->
+        <div class="admin-section" id="sec-predictions">
+          <div class="admin-hdr">
+            <div>
+              <div class="admin-title">Predictions Log</div>
+              <div class="admin-sub">Full history of all predictions this session</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+              <button class="btn-sm danger" onclick="clearHistory()">Clear</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <div id="fullTable"><div class="empty-state">No predictions yet.</div></div>
+          </div>
+        </div>
+
+        <!-- BRAND STATS -->
+        <div class="admin-section" id="sec-brands">
+          <div class="admin-hdr">
+            <div>
+              <div class="admin-title">Brand Stats</div>
+              <div class="admin-sub">Prediction count and avg price per brand</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="chart-box">
+              <div class="chart-title">Prediction Volume</div>
+              <div id="brandBars"><div class="empty-state" style="padding:20px">No data yet.</div></div>
+            </div>
+            <div class="table-wrap" style="margin:0">
+              <div class="table-head"><div class="table-title">Brand Summary</div></div>
+              <div id="brandTable"><div class="empty-state">No data yet.</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODEL CONFIG -->
+        <div class="admin-section" id="sec-model">
+          <div class="admin-hdr">
+            <div>
+              <div class="admin-title">Model Configuration</div>
+              <div class="admin-sub">Random Forest pipeline settings and performance</div>
+            </div>
+          </div>
+          <div class="config-grid">
+            <div class="config-card">
+              <h3>Model Parameters</h3>
+              <div class="param-row"><span class="param-key">algorithm</span><span class="param-val">RandomForestRegressor</span></div>
+              <div class="param-row"><span class="param-key">n_estimators</span><span class="param-val">10</span></div>
+              <div class="param-row"><span class="param-key">random_state</span><span class="param-val">42</span></div>
+              <div class="param-row"><span class="param-key">n_jobs</span><span class="param-val">-1 (all cores)</span></div>
+              <div class="param-row"><span class="param-key">scaler</span><span class="param-val">StandardScaler</span></div>
+              <div class="param-row"><span class="param-key">encoding</span><span class="param-val">pd.get_dummies (OHE)</span></div>
+              <div class="param-row"><span class="param-key">test_split</span><span class="param-val">80 / 20</span></div>
+            </div>
+            <div class="config-card">
+              <h3>Training Metrics</h3>
+              <div class="param-row"><span class="param-key">MAE</span><span class="metric-big">~$3,200</span></div>
+              <div class="param-row"><span class="param-key">RMSE</span><span class="param-val">~$5,100</span></div>
+              <div class="param-row"><span class="param-key">R² Score</span><span class="param-val">~0.91</span></div>
+              <div class="param-row"><span class="param-key">Model file</span><span class="param-val">artifacts/model.pkl</span></div>
+              <div class="param-row"><span class="param-key">Features file</span><span class="param-val">artifacts/feature_columns.pkl</span></div>
+            </div>
+            <div class="config-card">
+              <h3>Features Used</h3>
+              <div class="param-row"><span class="param-key">Year</span><span class="param-val badge like">Numeric</span></div>
+              <div class="param-row"><span class="param-key">Engine Size</span><span class="param-val badge like">Numeric</span></div>
+              <div class="param-row"><span class="param-key">Mileage</span><span class="param-val badge like">Numeric</span></div>
+              <div class="param-row"><span class="param-key">Brand</span><span class="param-val badge hybrid">OHE → 7 cols</span></div>
+              <div class="param-row"><span class="param-key">Fuel Type</span><span class="param-val badge hybrid">OHE → 4 cols</span></div>
+              <div class="param-row"><span class="param-key">Transmission</span><span class="param-val badge hybrid">OHE → 2 cols</span></div>
+              <div class="param-row"><span class="param-key">Condition</span><span class="param-val badge hybrid">OHE → 3 cols</span></div>
+            </div>
+            <div class="config-card">
+              <h3>API Endpoints</h3>
+              <div class="param-row"><span class="param-key" style="color:var(--blue)">GET /</span><span class="param-val">Health check</span></div>
+              <div class="param-row"><span class="param-key" style="color:var(--green)">POST /predict</span><span class="param-val">Price prediction</span></div>
+              <div class="param-row"><span class="param-key" style="color:var(--blue)">GET /docs</span><span class="param-val">Swagger UI</span></div>
+              <div class="param-row"><span class="param-key">Host</span><span class="param-val">localhost:8000</span></div>
+              <div class="param-row"><span class="param-key">Framework</span><span class="param-val">FastAPI + Uvicorn</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- API LOGS -->
+        <div class="admin-section" id="sec-apilogs">
+          <div class="admin-hdr">
+            <div>
+              <div class="admin-title">API Logs</div>
+              <div class="admin-sub">Live request log for this session</div>
+            </div>
+            <button class="btn-sm danger" onclick="clearLogs()">Clear Logs</button>
+          </div>
+          <div class="table-wrap">
+            <div id="apiLogsList"><div class="empty-state">No API calls yet.</div></div>
+          </div>
+        </div>
+
+      </div><!-- /admin-content -->
+    </div><!-- /admin-wrap -->
+  </div><!-- /admin page -->
+
+</div><!-- /main -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ── STATE ──
+let predictions = JSON.parse(localStorage.getItem('cv_predictions')||'[]');
+let apiLogs     = JSON.parse(localStorage.getItem('cv_logs')||'[]');
+let charts = {};
+
+// ── NAVIGATION ──
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el.classList.add('active');
+  if(name==='admin') refreshAdmin();
+}
+
+function showSection(name, el) {
+  document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  el.classList.add('active');
+  setTimeout(()=>renderCharts(), 50);
+}
+
+// ── PREDICT ──
+async function doPrediction() {
+  const ids = ['Brand','Year','Engine_Size','Fuel_Type','Transmission','Condition','Mileage'];
+  const vals = {};
+  for(const id of ids){
+    const el = document.getElementById(id);
+    if(!el.value){alert('Please fill in: '+id.replace('_',' '));return;}
+    vals[id] = el.value;
+  }
+  const payload = {
+    Brand: vals.Brand, Year: parseInt(vals.Year),
+    Engine_Size: parseFloat(vals.Engine_Size), Fuel_Type: vals.Fuel_Type,
+    Transmission: vals.Transmission, Mileage: parseInt(vals.Mileage),
+    Condition: vals.Condition
+  };
+
+  const btn=document.getElementById('predictBtn');
+  document.getElementById('btnLabel').style.display='none';
+  document.getElementById('btnSpinner').style.display='block';
+  btn.disabled=true;
+
+  const t0 = Date.now();
+  try {
+    const res = await fetch('http://127.0.0.1:8000/predict',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const ms = Date.now()-t0;
+    if(!res.ok) throw new Error('Server error '+res.status);
+    const data = await res.json();
+
+    // show result
+    document.getElementById('idleState').style.display='none';
+    document.getElementById('errCard').style.display='none';
+    const pc = document.getElementById('priceCard');
+    pc.style.display='block';
+    document.getElementById('resPrice').textContent='$'+data.predicted_price.toLocaleString('en-US',{minimumFractionDigits:2});
+    document.getElementById('resMsg').textContent=data.message;
+
+    const sc=document.getElementById('summaryCard');
+    sc.style.display='block';
+    document.getElementById('summaryRows').innerHTML=
+      Object.entries(payload).map(([k,v])=>`<div class="summary-row"><span class="summary-key">${k.replace('_',' ')}</span><span class="summary-val">${v}</span></div>`).join('');
+
+    // store
+    const entry={...payload, predicted_price:data.predicted_price, ts:new Date().toLocaleString(), ms};
+    predictions.unshift(entry);
+    if(predictions.length>100) predictions.pop();
+    localStorage.setItem('cv_predictions',JSON.stringify(predictions));
+
+    logAPI('POST','/predict',200,ms);
+
+  } catch(err){
+    document.getElementById('idleState').style.display='none';
+    const ec=document.getElementById('errCard');
+    ec.style.display='block';
+    ec.innerHTML=`⚠️ ${err.message||'Cannot connect.'}<br/><br/>Make sure uvicorn is running:<br/><code>uvicorn app:app --reload</code>`;
+    logAPI('POST','/predict',500,Date.now()-t0);
+  }
+
+  document.getElementById('btnLabel').style.display='';
+  document.getElementById('btnLabel').textContent='PREDICT AGAIN';
+  document.getElementById('btnSpinner').style.display='none';
+  btn.disabled=false;
+}
+
+// ── API LOG ──
+function logAPI(method,path,status,ms){
+  apiLogs.unshift({method,path,status,ms,ts:new Date().toLocaleTimeString()});
+  if(apiLogs.length>50) apiLogs.pop();
+  localStorage.setItem('cv_logs',JSON.stringify(apiLogs));
+}
+
+function clearLogs(){
+  if(confirm('Clear API logs?')){apiLogs=[];localStorage.setItem('cv_logs','[]');renderLogs();}
+}
+
+function clearHistory(){
+  if(confirm('Clear all predictions?')){
+    predictions=[];localStorage.setItem('cv_predictions','[]');
+    refreshAdmin();
+  }
+}
+
+// ── ADMIN RENDER ──
+function refreshAdmin(){
+  renderKPIs();
+  renderRecentTable();
+  renderFullTable();
+  renderBrandSection();
+  renderLogs();
+  renderCharts();
+}
+
+function renderKPIs(){
+  const n=predictions.length;
+  document.getElementById('kpi-total').textContent=n;
+  if(n>0){
+    const avg=predictions.reduce((s,p)=>s+p.predicted_price,0)/n;
+    document.getElementById('kpi-avg').textContent='$'+Math.round(avg).toLocaleString();
+    const brands={};
+    predictions.forEach(p=>brands[p.Brand]=(brands[p.Brand]||0)+1);
+    const top=Object.entries(brands).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('kpi-top-brand').textContent=top?top[0]:'—';
+  } else {
+    document.getElementById('kpi-avg').textContent='—';
+    document.getElementById('kpi-top-brand').textContent='—';
+  }
+}
+
+function tableHTML(rows){
+  if(!rows.length) return '<div class="empty-state">No predictions yet.</div>';
+  return `<table class="tbl">
+    <thead><tr>
+      <th>#</th><th>Brand</th><th>Year</th><th>Fuel</th><th>Transmission</th><th>Condition</th><th>Mileage</th><th>Predicted Price</th><th>Time</th>
+    </tr></thead>
+    <tbody>
+    ${rows.map((p,i)=>`<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td style="color:var(--text);font-weight:700">${p.Brand}</td>
+      <td>${p.Year}</td>
+      <td><span class="badge ${p.Fuel_Type.toLowerCase()}">${p.Fuel_Type}</span></td>
+      <td>${p.Transmission}</td>
+      <td><span class="badge ${p.Condition==='Like New'?'like':p.Condition.toLowerCase()}">${p.Condition}</span></td>
+      <td>${parseInt(p.Mileage).toLocaleString()}</td>
+      <td style="color:var(--accent);font-weight:700">$${p.predicted_price.toLocaleString('en-US',{minimumFractionDigits:2})}</td>
+      <td style="color:var(--muted)">${p.ts}</td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function renderRecentTable(){
+  document.getElementById('recentTable').innerHTML=tableHTML(predictions.slice(0,5));
+}
+function renderFullTable(){
+  document.getElementById('fullTable').innerHTML=tableHTML(predictions);
+}
+
+function renderBrandSection(){
+  const brands={};
+  predictions.forEach(p=>{
+    if(!brands[p.Brand]) brands[p.Brand]={count:0,total:0};
+    brands[p.Brand].count++;
+    brands[p.Brand].total+=p.predicted_price;
+  });
+  const entries=Object.entries(brands).sort((a,b)=>b[1].count-a[1].count);
+  const maxCount=entries.length?entries[0][1].count:1;
+
+  if(!entries.length){
+    document.getElementById('brandBars').innerHTML='<div class="empty-state" style="padding:20px">No data yet.</div>';
+    document.getElementById('brandTable').innerHTML='<div class="empty-state">No data yet.</div>';
+    return;
+  }
+
+  document.getElementById('brandBars').innerHTML=entries.map(([b,d])=>`
+    <div class="brand-row">
+      <div class="brand-name">${b}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(d.count/maxCount*100)}%"></div></div>
+      <div class="brand-count">${d.count}</div>
+    </div>`).join('');
+
+  document.getElementById('brandTable').innerHTML=`<table class="tbl">
+    <thead><tr><th>Brand</th><th>Count</th><th>Avg Price</th></tr></thead>
+    <tbody>${entries.map(([b,d])=>`<tr>
+      <td style="color:var(--text);font-weight:700">${b}</td>
+      <td>${d.count}</td>
+      <td style="color:var(--accent);font-weight:700">$${Math.round(d.total/d.count).toLocaleString()}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+function renderLogs(){
+  const el=document.getElementById('apiLogsList');
+  if(!apiLogs.length){el.innerHTML='<div class="empty-state">No API calls yet.</div>';return;}
+  el.innerHTML=apiLogs.map(l=>`
+    <div class="log-line">
+      <span class="log-time">${l.ts}</span>
+      <span class="log-method ${l.method.toLowerCase()}">${l.method}</span>
+      <span class="log-path">${l.path}</span>
+      <span class="log-status ${l.status<400?'ok':'err'}">${l.status}</span>
+      <span class="log-ms">${l.ms}ms</span>
+    </div>`).join('');
+}
+
+// ── CHARTS ──
+const DARK_GRID='rgba(255,255,255,0.05)';
+const ACCENT='#b8ff3c';
+const COLORS=['#b8ff3c','#3cffa0','#3cb8ff','#ffb857','#ff6b6b','#a03cff','#ff3cb8'];
+
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function renderCharts(){
+  // Line chart — predictions over time (last 20)
+  const recent=predictions.slice(0,20).reverse();
+  destroyChart('line');
+  const lc=document.getElementById('lineChart');
+  if(lc){
+    charts['line']=new Chart(lc,{
+      type:'line',
+      data:{
+        labels:recent.map((_,i)=>i+1),
+        datasets:[{
+          label:'Predicted Price',data:recent.map(p=>p.predicted_price),
+          borderColor:ACCENT,backgroundColor:'rgba(184,255,60,0.06)',
+          borderWidth:2,pointRadius:3,pointBackgroundColor:ACCENT,tension:0.4,fill:true
+        }]
+      },
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{
+        x:{ticks:{color:'#6060a0',font:{family:'JetBrains Mono',size:10}},grid:{color:DARK_GRID}},
+        y:{ticks:{color:'#6060a0',font:{family:'JetBrains Mono',size:10},callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:DARK_GRID}}
+      }}
+    });
+  }
+
+  // Distribution — histogram buckets
+  const prices=predictions.map(p=>p.predicted_price);
+  const buckets=[0,10000,20000,30000,40000,50000,60000,80000,100000,Infinity];
+  const labels=['<10k','10-20k','20-30k','30-40k','40-50k','50-60k','60-80k','80-100k','100k+'];
+  const counts=new Array(labels.length).fill(0);
+  prices.forEach(p=>{for(let i=0;i<buckets.length-1;i++){if(p>=buckets[i]&&p<buckets[i+1]){counts[i]++;break;}}});
+  destroyChart('dist');
+  const dc=document.getElementById('distChart');
+  if(dc){
+    charts['dist']=new Chart(dc,{
+      type:'bar',
+      data:{labels,datasets:[{label:'Count',data:counts,backgroundColor:'rgba(184,255,60,0.25)',borderColor:ACCENT,borderWidth:1,borderRadius:4}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{
+        x:{ticks:{color:'#6060a0',font:{size:9}},grid:{color:DARK_GRID}},
+        y:{ticks:{color:'#6060a0',font:{size:10},stepSize:1},grid:{color:DARK_GRID}}
+      }}
+    });
+  }
+
+  // Brand avg price bar
+  const brandMap={};
+  predictions.forEach(p=>{
+    if(!brandMap[p.Brand])brandMap[p.Brand]={t:0,n:0};
+    brandMap[p.Brand].t+=p.predicted_price;brandMap[p.Brand].n++;
+  });
+  const bLabels=Object.keys(brandMap);
+  const bVals=bLabels.map(b=>Math.round(brandMap[b].t/brandMap[b].n));
+  destroyChart('brand');
+  const bc=document.getElementById('brandChart');
+  if(bc){
+    charts['brand']=new Chart(bc,{
+      type:'bar',
+      data:{labels:bLabels,datasets:[{label:'Avg Price',data:bVals,backgroundColor:COLORS.slice(0,bLabels.length),borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{
+        x:{ticks:{color:'#6060a0',font:{size:10}},grid:{color:DARK_GRID}},
+        y:{ticks:{color:'#6060a0',font:{size:10},callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:DARK_GRID}}
+      }}
+    });
+  }
+
+  // Fuel type donut
+  const fuelMap={};
+  predictions.forEach(p=>fuelMap[p.Fuel_Type]=(fuelMap[p.Fuel_Type]||0)+1);
+  destroyChart('fuel');
+  const fc=document.getElementById('fuelChart');
+  if(fc){
+    charts['fuel']=new Chart(fc,{
+      type:'doughnut',
+      data:{labels:Object.keys(fuelMap),datasets:[{data:Object.values(fuelMap),backgroundColor:COLORS,borderColor:'transparent',hoverOffset:4}]},
+      options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#9090b8',font:{size:11},padding:14}}}}
+    });
+  }
+
+  // Condition bar
+  const condMap={};
+  predictions.forEach(p=>condMap[p.Condition]=(condMap[p.Condition]||0)+1);
+  destroyChart('cond');
+  const cc=document.getElementById('condChart');
+  if(cc){
+    charts['cond']=new Chart(cc,{
+      type:'bar',
+      data:{labels:Object.keys(condMap),datasets:[{data:Object.values(condMap),backgroundColor:['#3cffa0','#3cb8ff','#ffb857'],borderRadius:6,borderSkipped:false}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{
+        x:{ticks:{color:'#6060a0',font:{size:11}},grid:{color:DARK_GRID}},
+        y:{ticks:{color:'#6060a0',font:{size:10},stepSize:1},grid:{color:DARK_GRID}}
+      }}
+    });
+  }
+
+  // Transmission donut
+  const transMap={};
+  predictions.forEach(p=>transMap[p.Transmission]=(transMap[p.Transmission]||0)+1);
+  destroyChart('trans');
+  const tc=document.getElementById('transChart');
+  if(tc){
+    charts['trans']=new Chart(tc,{
+      type:'doughnut',
+      data:{labels:Object.keys(transMap),datasets:[{data:Object.values(transMap),backgroundColor:['#b8ff3c','#3cb8ff'],borderColor:'transparent'}]},
+      options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#9090b8',font:{size:11},padding:14}}}}
+    });
+  }
+}
+
+// ── EXPORT CSV ──
+function exportCSV(){
+  if(!predictions.length){alert('No data to export.');return;}
+  const header='Brand,Year,Engine_Size,Fuel_Type,Transmission,Mileage,Condition,Predicted_Price,Timestamp';
+  const rows=predictions.map(p=>`${p.Brand},${p.Year},${p.Engine_Size},${p.Fuel_Type},${p.Transmission},${p.Mileage},${p.Condition},${p.predicted_price},"${p.ts}"`);
+  const csv=[header,...rows].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='carval_predictions.csv';a.click();
+}
+
+// ── INIT ──
+refreshAdmin();
+</script>
+</body>
+</html>
