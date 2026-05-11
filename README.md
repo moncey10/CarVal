@@ -26,7 +26,7 @@ CarPrice AI predicts the market price of a used car based on inputs like brand, 
 ```
 car-price-prediction/
 ├── app.py                  # FastAPI backend
-├── preprocessing.py        # Data cleaning + model training
+├── train.py        # Data cleaning + model training
 ├── pipeline/
 │   ├── __init__.py
 │   └── build_pipeline.py   # sklearn Pipeline builder
